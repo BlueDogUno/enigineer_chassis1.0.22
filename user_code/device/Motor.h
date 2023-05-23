@@ -18,10 +18,6 @@ public:
     fp32 speed;
     fp32 speed_set;
 
-    fp32 total_angle;
-    fp32 angle_set;
-    fp32 angle_error;
-    
     fp32 current_set;
     int16_t current_give;
 
