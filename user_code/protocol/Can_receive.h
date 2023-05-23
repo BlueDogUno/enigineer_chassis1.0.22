@@ -60,7 +60,12 @@ typedef struct
   int16_t given_current;
   uint8_t temperate;
   int16_t last_ecd;
+
+  uint16_t offset_angle;     //补偿角度
   int16_t round;
+  fp32 total_angle;
+	fp32  last_total_angle;
+	fp32  angle_err;
 } motor_measure_t;
 
 // TODO 超电还未对接

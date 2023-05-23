@@ -40,6 +40,8 @@ void Can_receive::get_high_motor_measure(uint8_t num, uint8_t data[8])
     {
         chassis_high_motor[num].round++;
     }
+    chassis_high_motor[num].total_angle = chassis_high_motor[num].round * 8192 + chassis_high_motor[num].ecd - chassis_high_motor[num].offset_angle;
+    chassis_high_motor[num].angle_err = chassis_high_motor[num].last_total_angle - chassis_high_motor[num].total_angle;
 
 }
 

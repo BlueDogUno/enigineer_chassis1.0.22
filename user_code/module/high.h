@@ -55,7 +55,9 @@ public:
 
     
     M3508_motor chassis_high_motor[2]; //抬升电机数据
-    
+
+    fp32 chassis_high_motor_start_angle[2];
+    bool_t motor_status[2];
     //抬升
     
     float lift_lenth;
@@ -102,6 +104,14 @@ extern TOP top;
 #define LIFT_RIGHT_MAX_OUT     4000.0f
 #define LIFT_RIGHT_MAX_IOUT     1.0f
 
+//角度环
+#define MOTIVE_MOTOR_ANGLE_PID_KP 4000.0f 
+#define MOTIVE_MOTOR_ANGLE_PID_KI 0.0f
+#define MOTIVE_MOTOR_ANGLE_PID_KD 1.0f
+#define MOTIVE_MOTOR_ANGLE_PID_MAX_IOUT 1.0f
+#define MOTIVE_MOTOR_ANGLE_PID_MAX_OUT 15000.0f
+#define ANGLE_ERR_TOLERANT 5000
+
 // 各种档位的赋值，方便模式设置
 extern enum
 {
@@ -110,7 +120,14 @@ extern enum
     down,
     in,
     out,
+    
 }state_type;
+
+extern enum
+{
+    READY,
+    WAIT,
+}motor_status;
 
  //任务流程
     void feedback_update();
