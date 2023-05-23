@@ -29,19 +29,13 @@ void TOP::init()
     //获取遥控器指针
     top_RC = remote_control.get_remote_control_point();
     last_top_RC = remote_control.get_last_remote_control_point();
-    top_last_key_v = 0;
 
-    //速度环控制
+    top_last_key_v = 0;
     fp32 lift_left_pid_parm[5] = {LIFT_LEFT_KP, LIFT_LEFT_KI, LIFT_LEFT_KD, LIFT_LEFT_MAX_IOUT, LIFT_LEFT_MAX_OUT};
     fp32 lift_right_pid_parm[5] = {LIFT_RIGHT_KP, LIFT_RIGHT_KI, LIFT_RIGHT_KD, LIFT_RIGHT_MAX_IOUT, LIFT_RIGHT_MAX_OUT};
     chassis_high_motor[0].speed_pid.init(PID_SPEED, lift_left_pid_parm, &chassis_high_motor[0].speed, &chassis_high_motor[0].speed_set, NULL);
     chassis_high_motor[1].speed_pid.init(PID_SPEED, lift_right_pid_parm, &chassis_high_motor[1].speed, &chassis_high_motor[1].speed_set, NULL);
 
-
-    //角度环控制
-    fp32 lift_angle_pid_parm[5] = {MOTIVE_MOTOR_ANGLE_PID_KP, MOTIVE_MOTOR_ANGLE_PID_KI, MOTIVE_MOTOR_ANGLE_PID_KD, MOTIVE_MOTOR_ANGLE_PID_MAX_IOUT, MOTIVE_MOTOR_ANGLE_PID_MAX_OUT};
-    chassis_high_motor[0].speed_pid.init(PID_SPEED, lift_angle_pid_parm, &chassis_high_motor[0].total_angle, &chassis_high_motor[0].angle_set, NULL);
-    chassis_high_motor[1].speed_pid.init(PID_SPEED, lift_angle_pid_parm, &chassis_high_motor[1].total_angle, &chassis_high_motor[1].angle_set, NULL);
     //初始化抬升电机
     for (uint8_t i = 0; i < 2; ++i)
     {
@@ -50,9 +44,6 @@ void TOP::init()
         //初始化pid
         
         chassis_high_motor[i].speed_pid.pid_clear();
-        chassis_high_motor[i].angle_pid.pid_clear();
-        chassis_high_motor_start_angle[i] = chassis_high_motor[i].total_angle;
-        chassis_high_motor[i].angle_error = chassis_high_motor[i].total_angle - chassis_high_motor[i].angle_set;
     }
 
     top.lift_state = stop;
@@ -73,12 +64,6 @@ void TOP::feedback_update()
     {
         //更新抬升电机速度
         chassis_high_motor[i].speed = CHASSIS_HIGH_RPM_TO_VECTOR_SEN * chassis_high_motor[i].motor_measure->speed_rpm;
-        chassis_high_motor[i].total_angle = chassis_high_motor[i].motor_measure->total_angle;
-        if (chassis_high_motor[i].angle_error < ANGLE_ERR_TOLERANT && chassis_high_motor[i].angle_error > -ANGLE_ERR_TOLERANT)
-            motor_status[i] = READY;
-        else
-            motor_status[i] = WAIT;
-    
     }
 
 }
@@ -173,22 +158,20 @@ void TOP::lift_set_mode()
  * @param[in]      包括底盘所有信息.
  * @retval         none
  */
-void TOP::behaviour_control_set(fp32 *vlift_add)
+void TOP::behaviour_control_set(fp32 *vlift_set)
 {
 
-    if (vlift_add == NULL)
+    if (vlift_set == NULL)
     {
         return;
     }
-    // lift_control(vlift_set);
-    lift_control(vlift_add);
+    lift_control(vlift_set);
     last_top_RC->key.v = top_RC->key.v;
 }
 
 
 void TOP::lift_control(fp32 *vlift_set)
 {   
-
     if (vlift_set == NULL)
     {
         return;
@@ -197,10 +180,7 @@ void TOP::lift_control(fp32 *vlift_set)
 
     rc_deadband_limit(top_RC->rc.ch[3], lift_channel, RC_DEADBAND);
 
-    *vlift_set = top_RC->rc.ch[3];
-
-    chassis_high_motor[0].angle_set +=  *vlift_set * 10;
-    chassis_high_motor[1].angle_set -=  *vlift_set * 10;
+    *vlift_set = top_RC->rc.ch[3] / HIGH_OPEN_RC_SCALE;
 
 }
 
@@ -209,21 +189,17 @@ void TOP::set_control()
     fp32 tvlift_set = 0.0f;
     fp32 angle_set = 0;   
 
-    behaviour_control_set(&angle_set);
-
-    chassis_high_motor[0].angle_set =angle_set;
-    chassis_high_motor[1].angle_set =-1*angle_set;//?
-
+    //获取控制设置值
+    behaviour_control_set(&tvlift_set);
+        
+    chassis_high_motor[0].speed_set = tvlift_set;
+    chassis_high_motor[1].speed_set = -1*tvlift_set;
 
 }
 
 void TOP::solve(){
-
-    for (int i=1 ;i<2; i++){
-        chassis_high_motor[i].speed_set = chassis_high_motor[i].angle_pid.pid_calc();
-        chassis_high_motor[i].current_give = chassis_high_motor[i].speed_pid.pid_calc();
-    }
-    
+    chassis_high_motor[0].current_set = chassis_high_motor[0].speed_pid.pid_calc();
+    chassis_high_motor[1].current_set = chassis_high_motor[1].speed_pid.pid_calc();
 }
 
 void TOP::output()
